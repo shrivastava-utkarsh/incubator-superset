@@ -10,13 +10,21 @@ RUN sudo apt-get update && \
     sudo rm -rf sudo rm -rf /var/lib/apt/lists/*
 
 
-FROM gitpod/workspace-full:latest
-#RUN sudo apt-get install build-essential libssl-dev libffi-dev python3.6-dev python-pip libsasl2-dev libldap2-dev
-RUN pip install --upgrade setuptools pip 
-# && \
-#     pip install apache-superset && \
-#     superset db upgrade && \
-#     export FLASK_APP=superset && \
-#     superset fab create-admin && \
-#     superset load_examples && \
-#     superset init 
+FROM gitpod/workspace-full:latest as superset-py
+RUN mkdir /app \
+        && apt-get update -y \
+        && apt-get install -y --no-install-recommends \
+            build-essential \
+            default-libmysqlclient-dev \
+            libpq-dev \
+            libsasl2-dev \
+        && rm -rf /var/lib/apt/lists/*
+# First, we just wanna install requirements, which will allow us to utilize the cache
+# in order to only build if and only if requirements change
+COPY ./requirements/*.txt  /app/requirements/
+COPY setup.py MANIFEST.in README.md /app/
+COPY superset-frontend/package.json /app/superset-frontend/
+RUN cd /app \
+    && mkdir -p superset/static \
+    && touch superset/static/version_info.json \
+    && pip install --no-cache -r requirements/local.txt
